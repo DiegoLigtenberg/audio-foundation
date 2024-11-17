@@ -1,0 +1,10 @@
+{
+    "emmet.preferences": {
+        
+    },
+    
+     /* Hiding setup tools folders, e.g; fast.egg-info folder */
+    "files.exclude": {
+        "**/fast.egg-info": true
+    }
+}

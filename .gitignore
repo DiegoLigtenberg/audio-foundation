@@ -152,6 +152,25 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+
+# Custom exclusions added by me
+# -----------------------------
+
+# Exclude in the 'database' directory
+database/
+
+# Exclude in the 'benchmark' directory
+benchmark/
+
+# Exclude in the 'audio_files' directory
+audio_files/
+
+# Exclude in the 'mp3_files' directory
+mp3_files/
+
+# -----------------------------
+
+
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
