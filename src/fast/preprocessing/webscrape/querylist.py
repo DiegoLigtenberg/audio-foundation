@@ -1098,7 +1098,7 @@ print(ordered_genres)
 
 import pickle
 # Step 1: Open a file in write-binary mode
-with open('ordered_genres.pkl', 'wb') as file:
+with open('src\fast\preprocessing\webscrape\lists_and_save_files\ordered_genres.pkl', 'wb') as file:
     # Step 2: Serialize the list and save it to the file
     pickle.dump(ordered_genres, file)
 

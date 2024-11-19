@@ -11,6 +11,7 @@ import keyboard
 import threading
 from datetime import datetime
 import glob
+import sys
 
 # Configuration options for yt-dlp
 ydl_opts = {
@@ -254,8 +255,6 @@ def main():
         csv_files = [f for f in os.listdir(folder_path) if f.endswith('.csv')]
         csv_files_from_load = csv_files[csv_file_to_start_from::]
         print("start from genre:\t", csv_file_to_start_from, "-", csv_files_from_load[0])
-        # asd
-
 
         if csv_files_from_load:
             # Use tqdm for a progress bar over the list of CSV files
@@ -265,10 +264,13 @@ def main():
 
 
 
-            with tqdm(csv_files_from_load, desc="Processing CSV Files", unit="file", leave=False) as pbar:
-                for _csv in pbar:
+            with tqdm(csv_files_from_load, desc="Processing CSV Files", unit="file", leave=True) as pbar:
+                for i,_csv in enumerate(pbar):
                     cleanup_temp_folder(output_dir)
                     start_number = load_start_number(start_number_file)
+                    # each 50 genres we show the progressbar using \n gimmick
+                    if i%50 == 0: pbar.unit = "file\n"
+                    else: pbar.unit = "file"
 
                     csv_path = os.path.join(folder_path, _csv)
                     with open(csv_path, mode='r', newline='', encoding='utf-8') as file:
@@ -279,13 +281,14 @@ def main():
                     start_time = time.time()
                     download_short_videos_parallel(URLs, output_dir, condition_counts, batch_size=1, start_number=start_number, start_number_file=start_number_file)
                     pbar.update(1)  # Update the progress bar manually after each file
+                 
 
 
                     end_time = time.time()
                     elapsed_time = end_time - start_time
                       # Update the progress bar manually
                     with open(log_file_path, 'a', newline='', encoding='utf-8') as log_file:
-                        log_file.write(f"Processed {_csv} - Time taken: {elapsed_time:.2f} seconds. Total files saved: {condition_counts}\n")
+                        log_file.write(f"{_csv} - Time taken: {elapsed_time:.2f} seconds. {condition_counts}\n")
 
                     cleanup_temp_folder(output_dir)
 
@@ -299,6 +302,7 @@ if __name__ == '__main__':
     temp_dataloader_configs has start_number.txt
     - set this to 1 if you want to restart
     - dont adjust it if you want to continue
+    alt + f8 to quit program
     '''
     main()
     
