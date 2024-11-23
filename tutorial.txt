@@ -1,0 +1,7 @@
+download for triton:
+pip install https://huggingface.co/r4ziel/xformers_pre_built/resolve/main/triton-2.0.0-cp310-cp310-win_amd64.whl
+
+nvidia control panel:
+-> zie discord pinned msg 'nvidia control panel' search -> cuda system fallback policy change from driver default to no system fallback
+-> zorgt ervoor dat je geen ram gebruikt als vram op is 
+

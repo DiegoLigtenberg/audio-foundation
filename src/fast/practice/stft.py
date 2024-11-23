@@ -5,7 +5,7 @@ import time
 
 # Parameters
 N_FFT = 2046  # FFT size
-HOP_LENGTH = 862  # Overlap size
+HOP_LENGTH = 862//2  # Overlap size
 SAMPLE_RATE = 22050  # Desired sample rate
 CHUNK_DURATION = 20  # Duration in seconds to process
 start_time = time.time()
@@ -34,6 +34,7 @@ for i in range(10):
     stft_result = torch.stft(waveform.squeeze(), n_fft=N_FFT, hop_length=HOP_LENGTH, win_length=N_FFT, return_complex=True)
 
     print((stft_result).shape)
+    asd
     save_path = "test.pt"
     torch.save(stft_result, save_path)
 end_time = time.time()

@@ -12,12 +12,19 @@ import threading
 from datetime import datetime
 import glob
 import sys
+from fast.settings.directory_settings import *
+
+
+'''
+we want outcome sample of everything to be 44.1khz (44100), this happens after the mp3 compression of 192 bitrate, just so every song is eventually consistent.
+'''
+FFMPEG_YDL_DIR = r"C:\yt-dlp\ffmpeg-2024-11-06-git-4047b887fc-full_build\bin\ffmpeg.exe'"
 
 # Configuration options for yt-dlp
 ydl_opts = {
     'format': 'bestaudio/best',
-    'outtmpl': 'database/temp_dataloader/%(id)s.%(ext)s',
-    'ffmpeg_location': r'C:\yt-dlp\ffmpeg-2024-11-06-git-4047b887fc-full_build\bin\ffmpeg.exe',
+    'outtmpl': DATASET_MP3_DIR / '%(id)s.%(ext)s',
+    'ffmpeg_location': FFMPEG_YDL_DIR,
     'ignoreerrors': 'only_download',
     'quiet': True,
     'no_warnings': True,  # Suppress warnings
@@ -26,7 +33,7 @@ ydl_opts = {
     'postprocessors': [{
         'key': 'FFmpegExtractAudio',
         'preferredcodec': 'mp3',
-        'preferredquality': '192',
+        'preferredquality': '192', # number of bits used to represent samplerate and bit depth (to compression)  https://www.waveroom.com/blog/bit-rate-vs-sample-rate-vs-bit-depth/
         'nopostoverwrites': False,
     }],
     'postprocessor_args': [
@@ -93,7 +100,7 @@ def write_to_log(log_file_path,log_queue):
 
 # Cleanup function for temp folder
 def cleanup_temp_folder(output_dir):
-    """Cleans up files in the temp_dataloader directory that do not match the 7-digit filename pattern."""
+    """Cleans up files in the dataset_mp3 directory that do not match the 7-digit filename pattern."""
     pattern = re.compile(r"^\d{7}\.mp3$")  # Matches filenames like "0000001.mp3"
     
     for filename in os.listdir(output_dir):
@@ -185,7 +192,7 @@ def download_video_batch(batch_urls, output_dir, condition_counts, processed_url
     return temp_filenames
 
 # Main download function that runs in parallel
-def download_short_videos_parallel(urls, output_dir, condition_counts, batch_size=1, start_number=1, start_number_file='database/temp_dataloader_configs/start_number.txt'):
+def download_short_videos_parallel(urls, output_dir, condition_counts, batch_size=1, start_number=1, start_number_file= DATASET_MP3_CONFIG / "start_number.txt"):
     """Download videos in parallel with batch processing."""
     url_batches = [urls[i:i + batch_size] for i in range(0, len(urls), batch_size)]
     processed_urls = set()
@@ -215,11 +222,11 @@ def download_short_videos_parallel(urls, output_dir, condition_counts, batch_siz
 
 # Main entry point of the program
 def main():
-    folder_path = 'database/urls'
-    output_dir = 'database/temp_dataloader/'  # Changed directory to temp_dataloader
+    folder_path = DATASET_MP3_URLS
+    output_dir = DATASET_MP3_DIR  # Changed directory to temp_dataloader
     os.makedirs(output_dir, exist_ok=True)
     
-    start_number_file = 'database/temp_dataloader_configs/start_number.txt'  # File to store the current start number
+    start_number_file = DATASET_MP3_CONFIG / 'start_number.txt'  # File to store the current start number
     start_number_dir = os.path.dirname(start_number_file)
     os.makedirs(start_number_dir, exist_ok=True)
     start_number = load_start_number(start_number_file)
