@@ -1,0 +1,11 @@
+{
+    "min_val": -159.9687042236328,
+    "max_val": 135.4550018310547,
+    "min_max": [
+        -159.9687042236328,
+        135.4550018310547
+    ],
+    "metadata": {
+        "description": "Min and max values in the dict represent the log power spectrogram, calculated as 20 * log10(power_spectrogram + 1e-8), derived from the magnitude spectrogram of 170k songs (min = 0, max = 2434, rounded to max = 2750)"
+    }
+}

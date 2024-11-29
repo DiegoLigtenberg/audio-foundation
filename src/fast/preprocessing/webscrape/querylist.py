@@ -1,5 +1,18 @@
 
 from sklearn.feature_extraction.text import TfidfVectorizer
+import random
+import numpy as np
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
+from sklearn.metrics.pairwise import cosine_similarity
+
+random.seed(42) 
+np.random.seed(42)  # Replace 42 with any integer seed of your choice
+
 music_genres = [
     "ambient tech", "acoustic goth", "afro-experimental", "ambient house", "acid jazz fusion", 
     "avant-garde pop", "bluegrass metal", "baroque punk", "bubblegum pop", "bohemian electronic", 
@@ -936,9 +949,6 @@ music_genres = unique_genres
 
 print(len(music_genres))
 
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.cluster import KMeans
-
 # Define some broad categories
 categories = {
     'Electronic': [
@@ -1006,10 +1016,6 @@ for cluster, genres in clustered_genres.items():
     print(sorted(genres))
 '''
 
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.cluster import KMeans
-from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
 
 
 
@@ -1057,7 +1063,6 @@ for cluster, genres in clustered_genres.items():
     # Filter out genres that are too similar
     filtered_clustered_genres[cluster] = [genre for genre in genres if genre not in to_remove]
 
-import random
 
 # Step 6: Create a new list ordered by cluster, picking 80% of genres randomly from clusters larger than 10 genres
 ordered_genres = []
@@ -1086,7 +1091,7 @@ print("\nFiltered genres ordered by cluster:")
 for cluster, genres in filtered_clustered_genres.items():
     print(f"\nCluster {cluster}:")
     from pathlib import Path
-    num_files = len([f for f in Path('urls').iterdir() if f.is_file()])
+    num_files = len([f for f in Path('database/urls').iterdir() if f.is_file()])
     print(sorted(genres)[0:3])  # You can print the top 3 genres from each cluster for a preview
 
 
@@ -1098,8 +1103,17 @@ print(ordered_genres)
 
 import pickle
 # Step 1: Open a file in write-binary mode
-with open('src\fast\preprocessing\webscrape\lists_and_save_files\ordered_genres.pkl', 'wb') as file:
+with open(r'src\fast\preprocessing\webscrape\lists_and_save_files\ordered_genres2.pkl', 'wb') as file:
     # Step 2: Serialize the list and save it to the file
     pickle.dump(ordered_genres, file)
 
+with open(r'src\fast\preprocessing\webscrape\lists_and_save_files\ordered_genres.pkl', 'rb') as file:
+    # Step 2: Serialize the list and save it to the file
+    ordered_genres2 = pickle.load(file)
+
+print(len(ordered_genres))
+print("List saved successfully.")
+
+
+print(len(ordered_genres2))
 print("List saved successfully.")

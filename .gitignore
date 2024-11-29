@@ -168,6 +168,10 @@ audio_files/
 # Exclude in the 'mp3_files' directory
 mp3_files/
 
+# Ignore all .wav files
+*.wav
+
+
 # -----------------------------
 
 

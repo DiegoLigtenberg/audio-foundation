@@ -18,7 +18,7 @@ def fetch_youtube_videos(queries=None, num_videos=100):
     
     query_index = 0
     query = queries[query_index]
-    output_file = f"urls/music_videos_{query[:query.rfind(' music')] if query.endswith(' music') else query}.csv".replace(' ', '_')# Initial output file
+    output_file = f"database/urls/music_videos_{query[:query.rfind(' music')] if query.endswith(' music') else query}.csv".replace(' ', '_')# Initial output file
     start_time = time.time()
     all_urls = set()  # Track unique URLs for each query's file
     videos_collected = 0  # Total count of collected videos
@@ -98,7 +98,7 @@ def fetch_youtube_videos(queries=None, num_videos=100):
 
                 query_index = (query_index + 1) % len(queries)
                 query = queries[query_index]
-                output_file = f"urls/music_videos_{query[:query.rfind(' music')] if query.endswith(' music') else query}.csv".replace(' ', '_')
+                output_file = f"database/urls/music_videos_{query[:query.rfind(' music')] if query.endswith(' music') else query}.csv".replace(' ', '_')
                 start_time = time.time()  # Reset time for the new query
                 all_urls.clear()  # Clear the set of URLs to avoid duplicates across queries
 
@@ -162,7 +162,7 @@ def fetch_youtube_videos(queries=None, num_videos=100):
 
 
 # Step 1: Open the file in read-binary mode
-with open('ordered_genres.pkl', 'rb') as file:
+with open(r'src\fast\preprocessing\webscrape\lists_and_save_files\ordered_genres2.pkl', 'rb') as file:
     # Step 2: Load the serialized list
     loaded_genres = pickle.load(file)
 
@@ -171,14 +171,15 @@ print("Loaded list:")
 print(len(loaded_genres))
 
 
-with open('ordered_genres.pkl', 'rb') as file:
+with open(r'src\fast\preprocessing\webscrape\lists_and_save_files\ordered_genres2.pkl', 'rb') as file:
     # Step 2: Load the serialized list
     queries = pickle.load(file)
     queries = [query.replace(" /", "").replace("/","").lower() + " music" for query in queries]
 
 from pathlib import Path 
-start_from = len([f for f in Path('urls').iterdir() if f.is_file()])
+start_from = len([f for f in Path('database/urls').iterdir() if f.is_file()])
 # print(queries[start_from-1:])
+print(start_from)
 # asd
 # Fetch video metadata
-video_metadata = fetch_youtube_videos(queries=queries[start_from:], num_videos=1000000)
+video_metadata = fetch_youtube_videos(queries=queries[start_from:], num_videos=10000000)

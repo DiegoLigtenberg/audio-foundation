@@ -1,17 +1,13 @@
-from pathlib import Path
+
 import torchaudio
 from itertools import islice
 
 N_FFT = 2046  # FFT size
 HOP_LENGTH = 861  # Overlap size
-SAMPLE_RATE = 22050  # Desired sample rate
+SAMPLE_RATE = 44100  # Desired sample rate
 CHUNK_DURATION = 20  # Duration in seconds to process
-MONO = True
+MONO = False
 
-MONO = 1
-OUTPUT_FORMAT = "wav"
-
-DATASET_MP3_DIR = Path("F:/GitHub/audio-foundation\database/temp_dataloader")
 # SPECTROGRAM_SAVE_DIR = "train_spectrogram"
 # MIN_MAX_VALUES_SAVE_DIR = "F:/Thesis/test"
 # TEMP_INFERENCE_SAVE_DIR = "temp_inference"       # do not change

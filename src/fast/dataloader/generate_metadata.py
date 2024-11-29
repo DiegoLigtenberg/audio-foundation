@@ -12,7 +12,7 @@ def generate_metadata(dataset_dir, output_file, group_size=10000):
     with open(output_file, "w") as f:
         for idx, file in enumerate(files, start=1):
             group_number = (idx - 1) // group_size + 1
-            metadata_entry = {"file": file.name, "group": group_number}
+            metadata_entry = {"file": Path(file).as_posix(), "group": group_number}
             f.write(json.dumps(metadata_entry) + "\n")  # Write each entry as a JSON object
 
 if __name__ == "__main__":

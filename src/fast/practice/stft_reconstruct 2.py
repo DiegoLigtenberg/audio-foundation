@@ -11,12 +11,13 @@ h = list(range(1290,1400))
 # Parameters
 N_FFT = 2046  # FFT size
 HOP_LENGTH = 861  # Overlap size  (862 gives 512 time)
-SAMPLE_RATE = 22050  # Desired sample rate
+SAMPLE_RATE = 22050*2  # Desired sample rate
 CHUNK_DURATION = 20  # Duration in seconds to process
 MONO = True
 # Path to the audio file
 # audio_file_path = "audio_files/Jo Blankenburg - Meraki Extended.mp3"  # Replace with the actual path
 audio_file_path = DATASET_MP3_DIR / "0015636.mp3"  # Replace with the actual path
+print(audio_file_path)
 # audio_file_path = r"D:\Users\Diego Ligtenberg\Downloads\WORLDS DEEPEST BASS TEST EVER.mp3"
 
 # Load the audio file and ensure it's mono
@@ -39,7 +40,8 @@ if MONO:
         waveform = waveform.mean(dim=0, keepdim=True)
 
 # Trim or pad to the specified duration
-# waveform = waveform[:, :SAMPLE_RATE * CHUNK_DURATION]  # Trim if too long
+waveform = waveform[:, :SAMPLE_RATE * CHUNK_DURATION]  # Trim if too long
+
 if waveform.size(1) < SAMPLE_RATE * CHUNK_DURATION:  # Pad if too short
     waveform = torch.nn.functional.pad(waveform, (0, SAMPLE_RATE * CHUNK_DURATION - waveform.size(1)))
 
@@ -50,26 +52,52 @@ stft_result = torch.stft(waveform.squeeze(), n_fft=N_FFT, hop_length=HOP_LENGTH,
 
 # Compute the magnitude spectrogram (not squared)
 magnitude_spectrogram = torch.abs(stft_result)  # This is the magnitude spectrogram (no squaring)
+# Check energy in the last time frame (i.e., last row)
+last_time_bin_energy = magnitude_spectrogram[:, -3]  # Last time bin, all frequency bins
+print(last_time_bin_energy.shape)
+print(last_time_bin_energy.min())
+print(last_time_bin_energy.max())
+print(last_time_bin_energy.mean())
+print(last_time_bin_energy.median(),"\n")
+
+print(magnitude_spectrogram.min())
+print(magnitude_spectrogram.max())
+print(magnitude_spectrogram.mean())
+print(magnitude_spectrogram.median)
+# Check if the last time bin is "empty" (below a certain threshold)
+threshold = 1e-6  # Adjust this threshold based on your data and requirements
+is_empty = torch.all(last_time_bin_energy < threshold)
+
+if is_empty:
+    print("The last time bin is empty.")
+else:
+    print("The last time bin contains energy.")
+asd
+
+
 gaussian_noise = torch.normal(mean=0, std=0.2, size=(512, magnitude_spectrogram.size(1)))
 # print(gaussian_noise.shape)
 # Add noise to every 2nd frequency bin
 magnitude_spectrogram[1:200:2, :] += torch.abs(gaussian_noise[:100:])
 print(magnitude_spectrogram.mean(),magnitude_spectrogram.min(),magnitude_spectrogram.max())
-print(magnitude_spectrogram.shape)
+# print(magnitude_spectrogram.shape)
 # Griffin-Lim reconstruction with more iterations
 griffin_lim = GriffinLim(n_fft=N_FFT, hop_length=HOP_LENGTH,power=1)
 # Reconstruct the waveform using Griffin-Lim
 reconstructed_waveform = griffin_lim(magnitude_spectrogram)
-# asd
+print(magnitude_spectrogram.shape)
+asd
 
 # If MONO is True, convert mono to stereo by adding effects
 if MONO:
     # can add chatgpt ideas to make this sound nice stereo
     stereo_waveform = reconstructed_waveform.unsqueeze(0)
+    print(stereo_waveform.shape)
     # Save the stereo output
     torchaudio.save("reconstructed_stereo.wav", stereo_waveform, SAMPLE_RATE)
 
 else:
+    print(reconstructed_waveform.shape)
     # If the signal is already stereo, save it directly (no changes needed)
     torchaudio.save("reconstructed_waveform_high_quality.wav", reconstructed_waveform, SAMPLE_RATE)
 

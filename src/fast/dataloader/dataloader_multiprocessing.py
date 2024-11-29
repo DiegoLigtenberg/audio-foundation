@@ -14,7 +14,6 @@ import glob
 import sys
 from fast.settings.directory_settings import *
 
-
 '''
 we want outcome sample of everything to be 44.1khz (44100), this happens after the mp3 compression of 192 bitrate, just so every song is eventually consistent.
 '''
@@ -33,12 +32,12 @@ ydl_opts = {
     'postprocessors': [{
         'key': 'FFmpegExtractAudio',
         'preferredcodec': 'mp3',
-        'preferredquality': '192', # number of bits used to represent samplerate and bit depth (to compression)  https://www.waveroom.com/blog/bit-rate-vs-sample-rate-vs-bit-depth/
+        # 'preferredquality': '192', # number of bits used to represent samplerate and bit depth (to compression)  https://www.waveroom.com/blog/bit-rate-vs-sample-rate-vs-bit-depth/
         'nopostoverwrites': False,
     }],
     'postprocessor_args': [
         '-ar', '44100', 
-        '-ac', '1',
+        '-ac', '2',
     ],
     'concurrent_fragment_downloads': 20,  # Download 4 parts concurrently
 }
@@ -223,7 +222,7 @@ def download_short_videos_parallel(urls, output_dir, condition_counts, batch_siz
 # Main entry point of the program
 def main():
     folder_path = DATASET_MP3_URLS
-    output_dir = DATASET_MP3_DIR  # Changed directory to temp_dataloader
+    output_dir = DATASET_MP3_DIR  # Changed directory to mp3_file_dir
     os.makedirs(output_dir, exist_ok=True)
     
     start_number_file = DATASET_MP3_CONFIG / 'start_number.txt'  # File to store the current start number
@@ -232,7 +231,7 @@ def main():
     start_number = load_start_number(start_number_file)
 
     # logging
-    log_file_path = os.path.join("database/temp_dataloader_logs", get_log_filename())
+    log_file_path = os.path.join(DATASET_MP3_LOGS, get_log_filename())
     os.makedirs(os.path.dirname(log_file_path), exist_ok=True)  # Create folder if it doesn't exist
     cleanup_old_log_files(os.path.dirname(log_file_path))
 

@@ -16,6 +16,22 @@ class TimeLoop:
         print(f"Iteration took {elapsed_time:.4f} seconds")
         self.start_time = time.time()  # Reset for the next iteration
 
+class TimeBlock:
+    def __init__(self):
+        self.start_time = None
+
+    def __enter__(self):
+        self.start_time = time.time()
+        return self  # Allow optional chaining if needed
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        pass
+
+    def time_block(self):
+        elapsed_time = time.time() - self.start_time
+        print(f"Iteration took {elapsed_time:.4f} seconds")
+        self.start_time = time.time()  # Reset for the next iteration
+
 
 if __name__ == "__main__":
     # Usage

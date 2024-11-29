@@ -2,13 +2,24 @@ from yt_dlp import YoutubeDL
 import os
 import csv
 import time
+from pathlib import Path
+import torchaudio
 
 # urls can be a batch up up to 99999 songs, then we continue with new
 folder_path = 'database/urls'
 # Directory for storing processed audio files
 output_dir = 'database/temp_mp3_error_analysis/'
 os.makedirs(output_dir, exist_ok=True)
+file_path = r"database\temp_mp3_error_analysis\0000002_stereo_automatic.mp3"
 
+# Load the MP3 file
+waveform, sample_rate = torchaudio.load(file_path)
+
+# Output the shape and sample rate
+print(f"Waveform shape: {waveform.shape}")
+print(f"Sample rate: {sample_rate}")
+
+asd
 # List all CSV files in the folder
 csv_files = [f for f in os.listdir(folder_path) if f.endswith('.csv')]
 
@@ -38,14 +49,15 @@ print(len(URLS))
 # fine the download options with higher quality audio settings
 ydl_opts = {
     'format': 'bestaudio/best',
+    'outtmpl': f'{Path(output_dir)} %(id)s.%(ext)s',
     'postprocessors': [{
         'key': 'FFmpegExtractAudio',
         'preferredcodec': 'mp3',
-        'preferredquality': '320',
+        # 'preferredquality': '192',
     }],
     'postprocessor_args': [
         '-ar', '44100',
-        '-ac', '1',
+        '-ac', '2',
     ],
     'quiet': True,
     'ignoreerrors': True,
@@ -115,7 +127,7 @@ def download_short_videos(urls, output_dir):
 start_time = time.time()
 
 URLS = URLs[100:200]
-URLS = ["https://www.youtube.com/watch?v=0veWDx5beDs&pp=ygUPYWNpZC13YXZlIG11c2lj,Dark Minimal Techno NON STOP Radio Mix"]
+# URLS = ["https://www.youtube.com/watch?v=0veWDx5beDs&pp=ygUPYWNpZC13YXZlIG11c2lj,Dark Minimal Techno NON STOP Radio Mix"]
 # Call the function to download videos
 download_short_videos(URLS, output_dir)
 

@@ -1,16 +1,20 @@
-from collections import defaultdict
+import torch
 
-# Create a defaultdict with a lambda that returns a dictionary with 'count' and 'sum' as default values
-my_dict = defaultdict(lambda: {'count': 0, 'sum': 0})
+SAMPLE_RATE = 44100
+CHUNK_DURATION = 20  # in seconds
+N_FFT = 2046*2
+HOP_LENGTH = 1050
 
-# Adding values to the dictionary
-my_dict['a']['count'] += 1
-my_dict['a']['sum'] += 10
+# Generate waveform
+waveform_length = SAMPLE_RATE * CHUNK_DURATION
+waveform = torch.randn(1, waveform_length)
 
-my_dict['b']['count'] += 1
-my_dict['b']['sum'] += 5
+# Apply STFT
+stft_result = torch.stft(waveform[0], n_fft=N_FFT, hop_length=HOP_LENGTH, window=torch.hann_window(N_FFT), return_complex=True)
+print(stft_result[-1:].shape[1])
 
-my_dict['c']
-
-print(my_dict)  
-# Output: defaultdict(<function <lambda> at 0x...>, {'a': {'count': 1, 'sum': 10}, 'b': {'count': 1, 'sum': 5}})
+print(torch.ceil(torch.tensor(CHUNK_DURATION * SAMPLE_RATE) /HOP_LENGTH))
+asd
+# Get spectrogram shape
+spectrogram_shape = stft_result.shape
+print(stft_result[:,-1].shape)

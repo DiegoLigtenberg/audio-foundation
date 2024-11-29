@@ -40,6 +40,8 @@ class TransformerModel(nn.Module):
     def __init__(self, input_size, seq_len, num_heads, num_decoder_layers, dim_feedforward):
         super(TransformerModel, self).__init__()
         self.positional_encoding = PositionalEncoding(input_size, max_len=seq_len)
+        
+
         decoder_layer = nn.TransformerDecoderLayer(
             d_model=input_size,
             nhead=num_heads,
@@ -55,72 +57,76 @@ class TransformerModel(nn.Module):
         out = self.decoder(tgt, x)
         return self.fc_out(out)
 
-# Hyperparameters
-seq_len = 1024  # Time steps # potentially make this 512
-input_size = 1024  # Frequency bins
-num_samples = 1000
-batch_size = 64          #gpt3 ->4096
-num_heads = 32           #gpt3 -> 96
-num_decoder_layers = 16  #gpt3 -> 96
-dim_feedforward = 8192   #gpt3 -> 48768
-learning_rate = 1e-4
-num_epochs = 2
+if __name__ == "__main__":
 
-# Check if GPU is available
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Using device: {device}")
+    # Hyperparameters
+    seq_len = 1024  # Time steps # potentially make this 512
+    input_size = 1024  # Frequency bins
+    num_samples = 1000
+    batch_slice_size = 8          #gpt3 ->4096
+    num_heads = 32           #gpt3 -> 96
+    num_decoder_layers = 16  #gpt3 -> 96
+    dim_feedforward = 8192   #gpt3 -> 48768
+    learning_rate = 1e-4
+    num_epochs = 2
 
-# Dataset and DataLoader
-dataset = DummyDataset(num_samples=num_samples, seq_len=seq_len, input_size=input_size)
-dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    # Check if GPU is available
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
 
-# Model, Loss, and Optimizer
-model = TransformerModel(input_size, seq_len, num_heads, num_decoder_layers, dim_feedforward).to(device)
-criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    # Dataset and DataLoader
+    dataset = DummyDataset(num_samples=num_samples, seq_len=seq_len, input_size=input_size)
+    dataloader = DataLoader(dataset, batch_size=batch_slice_size, shuffle=True)
 
-# Count the total number of parameters in the model
-total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-print(f"Total number of trainable parameters: {total_params}")
+    # Model, Loss, and Optimizer
+    model = TransformerModel(input_size, seq_len, num_heads, num_decoder_layers, dim_feedforward).to(device)
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-decoder_layer = model.decoder.layers[0]  # Get the first layer of the decoder
-# print(decoder_layer)
-# print(f"Query weight size: {decoder_layer.multihead_attn.in_proj_weight.size()}")
-# print(f"Key weight size: {decoder_layer.multihead_attn.in_proj_weight.size()}")
-# print(f"Value weight size: {decoder_layer.multihead_attn.in_proj_weight.size()}")
+    # Count the total number of parameters in the model
+    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Total number of trainable parameters: {total_params}")
 
-# import sys
-# sys.exit()
+    decoder_layer = model.decoder.layers[0]  # Get the first layer of the decoder
+    # print(decoder_layer)
+    # print(f"Query weight size: {decoder_layer.multihead_attn.in_proj_weight.size()}")
+    # print(f"Key weight size: {decoder_layer.multihead_attn.in_proj_weight.size()}")
+    # print(f"Value weight size: {decoder_layer.multihead_attn.in_proj_weight.size()}")
+
+    # import sys
+    # sys.exit()
 
 
-# Training Loop with timing
-start_training = time.time()  # Start timing the entire training process
+    # Training Loop with timing
+    start_training = time.time()  # Start timing the entire training process
 
-for epoch in range(num_epochs):
-    model.train()
-    total_loss = 0
-    start_epoch = time.time()  # Start timing the current epoch
-    
-    with tqdm(dataloader, unit="batch") as tepoch:
-        tepoch.set_description(f"Epoch {epoch+1}/{num_epochs}")
-        for spectrogram, target in tepoch:
-            # Move data to GPU
-            spectrogram = spectrogram.to(device)
-            target = target.to(device)
+    for epoch in range(num_epochs):
+        model.train()
+        total_loss = 0
+        start_epoch = time.time()  # Start timing the current epoch
+        
+        with tqdm(dataloader, unit="batch") as tepoch:
+            tepoch.set_description(f"Epoch {epoch+1}/{num_epochs}")
+            for spectrogram, target in tepoch:
+                # Move data to GPU
+                spectrogram = spectrogram.to(device)
+                target = t
+                target = target.to(device)
+                print(spectrogram.shape,target.shape)
+                asd
+                optimizer.zero_grad()
+                tgt = torch.zeros_like(target).to(device)  # Initialize the target input with zeros
+                output = model(spectrogram, tgt)
+                loss = criterion(output[:, -1, :], target.squeeze(1))
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item()
+                tepoch.set_postfix(loss=loss.item())
 
-            optimizer.zero_grad()
-            tgt = torch.zeros_like(target).to(device)  # Initialize the target input with zeros
-            output = model(spectrogram, tgt)
-            loss = criterion(output[:, -1, :], target.squeeze(1))
-            loss.backward()
-            optimizer.step()
-            total_loss += loss.item()
-            tepoch.set_postfix(loss=loss.item())
+        end_epoch = time.time()  # End timing the current epoch
+        epoch_time = end_epoch - start_epoch
+        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {total_loss/len(dataloader):.4f}, Time: {epoch_time:.2f} seconds")
 
-    end_epoch = time.time()  # End timing the current epoch
-    epoch_time = end_epoch - start_epoch
-    print(f"Epoch {epoch+1}/{num_epochs}, Loss: {total_loss/len(dataloader):.4f}, Time: {epoch_time:.2f} seconds")
-
-end_training = time.time()  # End timing the entire training process
-total_training_time = end_training - start_training
-print(f"Total training time: {total_training_time:.2f} seconds")
+    end_training = time.time()  # End timing the entire training process
+    total_training_time = end_training - start_training
+    print(f"Total training time: {total_training_time:.2f} seconds")
