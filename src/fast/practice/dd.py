@@ -2,8 +2,8 @@ import torch
 
 SAMPLE_RATE = 44100
 CHUNK_DURATION = 20  # in seconds
-N_FFT = 2046*2
-HOP_LENGTH = 1050
+N_FFT = 2046
+HOP_LENGTH = 861
 
 # Generate waveform
 waveform_length = SAMPLE_RATE * CHUNK_DURATION

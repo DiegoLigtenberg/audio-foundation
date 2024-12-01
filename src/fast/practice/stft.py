@@ -64,7 +64,7 @@ print(magnitude_spectrogram.min(),magnitude_spectrogram.max(),magnitude_spectrog
 
 # Plot the log compressed power spectrogram
 plt.figure(figsize=(10, 4))
-plt.imshow(magnitude_spectrogram.numpy(), aspect='auto', origin='lower', cmap='inferno')
+plt.imshow(log_power_spectrogram.numpy(), aspect='auto', origin='lower', cmap='inferno')
 plt.colorbar(label='Log Power')
 plt.xlabel('Time Frames')
 plt.ylabel('Frequency Bins')

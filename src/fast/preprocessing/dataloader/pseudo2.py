@@ -445,7 +445,7 @@ class LogPowerSpectrogramSliceToSong:
     def __call__(self, data_dict):
         # Retrieve the input tensor (sliced spectrogram)
         input_tensor = data_dict["input"]["data"].get(self.input_key)
-        slice_length = input_tensor.size(-1) 
+        slice_length = input_tensor.size(-1) * 100 # add * n=100 for example to extend the prediction of 1 timestep by that
         if input_tensor is None:
             raise KeyError(f"Key '{self.input_key}' not found in input data.")
         
@@ -689,9 +689,9 @@ if __name__ == "__main__":
         LogPowerSpectrogramSliceExtractor(input_key="normalized_spectrogram",output_keys=["input","target"],n_fft=N_FFT, hop_length=HOP_LENGTH, sample_rate=SAMPLE_RATE, 
                                         slice_duration_sec=CHUNK_DURATION,n_slices=20,keep_original=False),
 
-        # LogPowerSpectrogramSliceToSong(input_key="input",output_key="reconstructed_log_power_spectrogram", n_slices=20,keep_original=False),
-        # DenormalizeLogPowerSpectrogram(input_key="reconstructed_log_power_spectrogram",output_key="denormalized_log_power_spectrogram",method="minmax",global_min_max_file=GLOBAL_MIN_MAX_LOG_POWER_SPECTROGRAM,constant=150,keep_original=False),
-        # LogPowerSpectrogramToWaveform(input_key="denormalized_log_power_spectrogram", output_key="reconstructed_waveform", n_fft=N_FFT, hop_length=HOP_LENGTH,keep_original=False)
+        LogPowerSpectrogramSliceToSong(input_key="target",output_key="reconstructed_log_power_spectrogram", n_slices=20,keep_original=False),
+        DenormalizeLogPowerSpectrogram(input_key="reconstructed_log_power_spectrogram",output_key="denormalized_log_power_spectrogram",method="minmax",global_min_max_file=GLOBAL_MIN_MAX_LOG_POWER_SPECTROGRAM,constant=150,keep_original=False),
+        LogPowerSpectrogramToWaveform(input_key="denormalized_log_power_spectrogram", output_key="reconstructed_waveform", n_fft=N_FFT, hop_length=HOP_LENGTH,keep_original=False)
     ]  # Add all transforms here
 
     output_key = 'input'  # Replace with your actual output key
@@ -702,7 +702,7 @@ if __name__ == "__main__":
         dataset,
         batch_size=1,
         shuffle=False,
-        collate_fn=lambda batch: collate_fn(batch, output_key, target_key)  # Pass keys explicitly
+        # collate_fn=lambda batch: collate_fn(batch, output_key, target_key)  # Pass keys explicitly
     )
 
     min_val = float('inf')  # Start with the largest possible value for min
@@ -719,9 +719,9 @@ if __name__ == "__main__":
             timeblock.time_block()
             # batch contains "data" with input and target as needed
             # input_data = batch["input"]["data"]["normalized_spectrogram"]
-            input_data = batch["input"]["data"]["input"]
-            print(input_data.shape)
-            asd
+            # input_data = batch["input"]["data"]["input"]
+            # print(input_data.shape)
+            # asd
             # input_data = batch["input"]["data"]
             # spectrogram_input = input_data["input"]
             # spectrogram_target = input_data["target"]
@@ -733,25 +733,26 @@ if __name__ == "__main__":
             # print(spectrogram.shape)
             # asd
 
-            # spectrogram = batch["input"]["data"]["reconstructed_waveform"]
-            # # Get the min and max of the spectrogram for the current batch
-            # batch_min = spectrogram.min().item()  # .item() to get the scalar value
-            # batch_max = spectrogram.max().item()  # .item() to get the scalar value
+            spectrogram = batch["input"]["data"]["reconstructed_waveform"]
+            # asd
+            # Get the min and max of the spectrogram for the current batch
+            batch_min = spectrogram.min().item()  # .item() to get the scalar value
+            batch_max = spectrogram.max().item()  # .item() to get the scalar value
 
-            # # Update the overall min and max values across all batches
-            # min_val = min(min_val, batch_min)
-            # max_val = max(max_val, batch_max)
-            # # print(min_val,max_val)
-            # print(spectrogram.shape)
-            # spectrogram = spectrogram.squeeze(0).squeeze(0)
-            # print(spectrogram.shape)
-            # # print(batch["input"]["metadata"]["file_path"])
-            # torchaudio.save("reconstructed_waveform.wav", spectrogram, SAMPLE_RATE)  # Use the appropriate sample rate
+            # Update the overall min and max values across all batches
+            min_val = min(min_val, batch_min)
+            max_val = max(max_val, batch_max)
+            # print(min_val,max_val)
+            print(spectrogram.shape)
+            spectrogram = spectrogram.squeeze(0).squeeze(0)
+            print(spectrogram.shape)
+            # print(batch["input"]["metadata"]["file_path"])
+            torchaudio.save("reconstructed_waveform.wav", spectrogram, SAMPLE_RATE)  # Use the appropriate sample rate
 
 
             # if i >10000:
                     # break
-            asd
+            # asd
             # print(i,end="\r")
                 # print(f'{batch["input"]["metadata"]["file_path"]} {i}-{min_val}-{max_val}')
 

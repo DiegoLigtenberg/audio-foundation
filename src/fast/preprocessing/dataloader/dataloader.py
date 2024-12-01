@@ -355,6 +355,7 @@ class LogPowerSpectrogramSliceExtractor:
         self.target_key = target_key
         self.padding_value = padding_value
         self.n_slices = n_slices
+        self.n_slice_param = self.n_slices
         self.keep_original = keep_original  # Store keep_original parameter
 
         # Calculate the number of time bins for the given slice duration
@@ -365,8 +366,26 @@ class LogPowerSpectrogramSliceExtractor:
         waveform_length = self.sample_rate * self.slice_duration_sec
         waveform = torch.randn(1, waveform_length)
         time_bins = torch.stft(waveform, n_fft=self.n_fft, hop_length=self.hop_length, 
-                               window=torch.hann_window(self.n_fft), return_complex=True).size(-1)
+                            window=torch.hann_window(self.n_fft), return_complex=True).size(-1)
         return time_bins
+    
+    def calculate_n_slices(self, song_duration_sec):
+        """
+        Calculate the number of slices based on the song duration.
+        Args:
+            song_duration_sec (float): The duration of the song in seconds.
+        Returns:
+            int: The calculated number of slices.
+        """
+        
+        if self.n_slice_param == None:
+            max_possible_slices = int(song_duration_sec // self.slice_duration_sec)
+            # Scale slices and ensure at least one slice is returned
+            return max_possible_slices
+        else:
+            return self.n_slice_param
+        
+
 
     def __call__(self, data_dict):
         log_power_spectrogram = data_dict["input"]["data"].get(self.input_key)
@@ -374,6 +393,14 @@ class LogPowerSpectrogramSliceExtractor:
             raise KeyError(f"Key '{self.input_key}' not found in input data.")
         
         channels, freq_bins, song_time_bins = log_power_spectrogram.shape
+
+        song_duration = data_dict["input"]["metadata"]["duration"]  # Get song duration in seconds
+        if song_duration is None:
+            raise KeyError("Song duration ('metadata.duration') not found in the input metadata.")
+        
+        # Calculate number of slices dynamically based on song duration
+        # if self.n_slices == None:
+        self.n_slices = self.calculate_n_slices(song_duration)
 
         # Calculate the number of time bins needed for the slice
         slice_length = self.time_bins_per_slice
@@ -401,16 +428,16 @@ class LogPowerSpectrogramSliceExtractor:
 
         # Extract slices and split into inputs and targets
         input_tensor = torch.empty((self.n_slices, channels, freq_bins, slice_length - 1), dtype=padded_spectrogram.dtype)
-        target_tensor = torch.empty((self.n_slices, channels, freq_bins, 1), dtype=padded_spectrogram.dtype)
-
+        target_tensor = torch.empty((self.n_slices, channels, freq_bins, slice_length - 1), dtype=padded_spectrogram.dtype)
+        
         for i, start_index in enumerate(start_indices):
             end_index = start_index + slice_length
             slice = padded_spectrogram[:, :, start_index:end_index]
 
-            # Split into input (first T-1) and target (last T)
-            input_tensor[i] = slice[:, :, :-1]  # shape [C, F, T-1] 
-            target_tensor[i] = slice[:, :, -1:]  # shape [C, F, 1]
-        
+            # Split into input (all but the last timestep) and target (all but the first timestep)
+            input_tensor[i] = slice[:, :, :-1]  # shape [C, F, :T-1] 
+            target_tensor[i] = slice[:, :, 1:]  # shape [C, F, 1:T]
+            # sanity check print((input_tensor[i][:,:,1]  == target_tensor[i][:,:,0]).all())
 
         # Add the inputs and targets to the output dictionary
         for key in self.output_keys:
@@ -627,6 +654,7 @@ class LogPowerSpectrogramToWaveform:
 
         # Store the waveform in the dictionary using the output_key
         data_dict["input"]["data"][self.output_key] = waveform
+        print(waveform.shape)
 
         if not self.keep_original:
             del data_dict["input"]["data"][self.input_key]  # Remove the original log power spectrogram if not needed
@@ -655,7 +683,7 @@ class LogPowerSpectrogramToWaveform:
             # Use Griffin-Lim to reconstruct the waveform for the current channel
             waveform_channel = self.griffin_lim(channel_magnitude)
             waveforms.append(waveform_channel)
-
+    
         # Stack the waveforms for all channels (mono or stereo)
         stacked_waveform = torch.stack(waveforms, dim=0)  # Shape: [channels, time]
         return stacked_waveform
@@ -666,13 +694,14 @@ def collate_fn(batch, output_key, target_key):
     input_tensors = [sample["input"]["data"][output_key] for sample in batch]
     target_tensors = [sample["input"]["data"][target_key] for sample in batch]
     
-    # Stack all input tensors and target tensors to create a batch of shape [batch_size, 20, C, F, T]
-    input_tensor_batch = torch.stack(input_tensors, dim=0)  # Shape: [batch_size, 20, C, F, T]
-    target_tensor_batch = torch.stack(target_tensors, dim=0)  # Shape: [batch_size, 20, C, 1, T]
+    # Stack all input tensors and target tensors to create a batch of shape [batch_size, S, C, F, T]
+    input_tensor_batch = torch.cat(input_tensors, dim=0)  # Shape: [batch_size, S, C, F, T]
+    target_tensor_batch = torch.cat(target_tensors, dim=0)  # Shape: [batch_size, S, C, 1, T]
 
-    # Reshape the batch to flatten the 20 slices into individual examples
-    input_tensor_batch = input_tensor_batch.view(-1, input_tensor_batch.shape[2], input_tensor_batch.shape[3], input_tensor_batch.shape[4])  # Shape: [batch_size * 20, C, F, T]
-    target_tensor_batch = target_tensor_batch.view(-1, target_tensor_batch.shape[2], target_tensor_batch.shape[3], target_tensor_batch.shape[4])  # Shape: [batch_size * 20, C, 1, T]
+    # print(input_tensors.shape,input_tensor_batch.shape)
+    # Reshape the batch to flatten the 20 slices into individual examples -> TODO this only needs to happen if you take n_slices is constant
+    # input_tensor_batch = input_tensor_batch.view(-1, input_tensor_batch.shape[2], input_tensor_batch.shape[3], input_tensor_batch.shape[4])  # Shape: [batch_size * S, C, F, T]
+    # target_tensor_batch = target_tensor_batch.view(-1, target_tensor_batch.shape[2], target_tensor_batch.shape[3], target_tensor_batch.shape[4])  # Shape: [batch_size * S, C, 1, T]
 
     # Return the batch in the desired format
     return {
@@ -689,15 +718,15 @@ if __name__ == "__main__":
     dirs = ["audio_files/"]  # Directory containing audio files
     # dirs = [DATASET_MP3_DIR]
     transforms = [
-        FileToWaveform(input_key="file_path", output_key="raw_waveform", target_sample_rate=SAMPLE_RATE, mono=False),
+        FileToWaveform(input_key="file_path", output_key="raw_waveform", target_sample_rate=SAMPLE_RATE, mono=MONO),
         WaveformToLogPowerSpectrogram(input_key="raw_waveform", output_key="log_power_spectrogram", n_fft=N_FFT, hop_length=HOP_LENGTH, keep_original=False),
         NormalizeLogPowerSpectrogram(input_key="log_power_spectrogram",output_key="normalized_spectrogram",method="minmax",global_min_max_file=GLOBAL_MIN_MAX_LOG_POWER_SPECTROGRAM,constant=150,keep_original=False),
         LogPowerSpectrogramSliceExtractor(input_key="normalized_spectrogram",output_keys=["input","target"],n_fft=N_FFT, hop_length=HOP_LENGTH, sample_rate=SAMPLE_RATE, 
                                         slice_duration_sec=CHUNK_DURATION,n_slices=20,keep_original=False),
 
-        LogPowerSpectrogramSliceToSong(input_key="input",output_key="reconstructed_log_power_spectrogram", n_slices=20,keep_original=False),
-        DenormalizeLogPowerSpectrogram(input_key="reconstructed_log_power_spectrogram",output_key="denormalized_log_power_spectrogram",method="minmax",global_min_max_file=GLOBAL_MIN_MAX_LOG_POWER_SPECTROGRAM,constant=150,keep_original=False),
-        LogPowerSpectrogramToWaveform(input_key="denormalized_log_power_spectrogram", output_key="reconstructed_waveform", n_fft=N_FFT, hop_length=HOP_LENGTH,keep_original=False)
+        # LogPowerSpectrogramSliceToSong(input_key="input",output_key="reconstructed_log_power_spectrogram", n_slices=20,keep_original=False),
+        # DenormalizeLogPowerSpectrogram(input_key="reconstructed_log_power_spectrogram",output_key="denormalized_log_power_spectrogram",method="minmax",global_min_max_file=GLOBAL_MIN_MAX_LOG_POWER_SPECTROGRAM,constant=150,keep_original=False),
+        # LogPowerSpectrogramToWaveform(input_key="denormalized_log_power_spectrogram", output_key="reconstructed_waveform", n_fft=N_FFT, hop_length=HOP_LENGTH,keep_original=False)
     ]  # Add all transforms here
 
     output_key = 'input'  # Replace with your actual output key
@@ -708,7 +737,7 @@ if __name__ == "__main__":
         dataset,
         batch_size=1,
         shuffle=False,
-        # collate_fn=lambda batch: collate_fn(batch, output_key, target_key)  # Pass keys explicitly
+        collate_fn=lambda batch: collate_fn(batch, output_key, target_key)  # Pass keys explicitly
     )
 
     min_val = float('inf')  # Start with the largest possible value for min
@@ -727,36 +756,43 @@ if __name__ == "__main__":
             # input_data = batch["input"]["data"]["denormalized_log_power_spectrogram"]
             # print(input_data.shape)
             # asd
-            # input_data = batch["input"]["data"]
-            # spectrogram_input = input_data["input"]
-            # spectrogram_target = input_data["target"]
-            # print(spectrogram_input.shape)
-            # print(spectrogram_target.shape)
+            input_data = batch["input"]["data"]
+            spectrogram_input = input_data["input"]
+            spectrogram_target = input_data["target"]
+            
+            spectrogram_input = spectrogram_input[0]
+            print(spectrogram_input.shape)
+            print(spectrogram_target.shape)
+            torch.save(spectrogram_input, 'src/fast/model/model_weights/spectrogram_input.pth')
+            asd
+
+            
             # asd
             
             # spectrogram = batch["input"]["data"]["target"]
             # print(spectrogram.shape)
             # asd
+            
+            # spectrogram = batch["input"]["data"]["reconstructed_waveform"]
+            # print(spectrogram.shape)
+            # # Get the min and max of the spectrogram for the current batch
+            # batch_min = spectrogram.min().item()  # .item() to get the scalar value
+            # batch_max = spectrogram.max().item()  # .item() to get the scalar value
 
-            spectrogram = batch["input"]["data"]["reconstructed_waveform"]
-            # Get the min and max of the spectrogram for the current batch
-            batch_min = spectrogram.min().item()  # .item() to get the scalar value
-            batch_max = spectrogram.max().item()  # .item() to get the scalar value
+            # # Update the overall min and max values across all batches
+            # min_val = min(min_val, batch_min)
+            # max_val = max(max_val, batch_max)
+            # # print(min_val,max_val)
+            # print(spectrogram.shape)
+            # spectrogram = spectrogram.squeeze(0).squeeze(0)
+            # print(spectrogram.shape)
+            # # print(batch["input"]["metadata"]["file_path"])
+            # torchaudio.save("reconstructed_waveform2.wav", spectrogram, SAMPLE_RATE)  # Use the appropriate sample rate
 
-            # Update the overall min and max values across all batches
-            min_val = min(min_val, batch_min)
-            max_val = max(max_val, batch_max)
-            # print(min_val,max_val)
-            print(spectrogram.shape)
-            spectrogram = spectrogram.squeeze(0).squeeze(0)
-            print(spectrogram.shape)
-            # print(batch["input"]["metadata"]["file_path"])
-            torchaudio.save("reconstructed_waveform.wav", spectrogram, SAMPLE_RATE)  # Use the appropriate sample rate
-
-
+            # asd
             # if i >10000:
                     # break
-            asd
+            # asd
             # print(i,end="\r")
                 # print(f'{batch["input"]["metadata"]["file_path"]} {i}-{min_val}-{max_val}')
 

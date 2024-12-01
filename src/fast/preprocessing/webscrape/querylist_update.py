@@ -1635,17 +1635,17 @@ print("\nOrdered list of genres:")
 
 import pickle
 # Step 1: Open a file in write-binary mode
-# with open(r'src\fast\preprocessing\webscrape\lists_and_save_files\ordered_genres2.pkl', 'wb') as file:
-#     # Step 2: Serialize the list and save it to the file
-#     pickle.dump(ordered_genres, file)
+with open(r'src\fast\preprocessing\webscrape\lists_and_save_files\ordered_genres2.pkl', 'wb') as file:
+    # Step 2: Serialize the list and save it to the file
+    pickle.dump(ordered_genres, file)
 
-# with open(r'src\fast\preprocessing\webscrape\lists_and_save_files\ordered_genres.pkl', 'rb') as file:
-#     # Step 2: Serialize the list and save it to the file
-#     ordered_genres2 = pickle.load(file)
+with open(r'src\fast\preprocessing\webscrape\lists_and_save_files\ordered_genres.pkl', 'rb') as file:
+    # Step 2: Serialize the list and save it to the file
+    ordered_genres2 = pickle.load(file)
 
 print(len(ordered_genres))
 print("List saved successfully.")
 
 
-# print(len(ordered_genres2))
-# print("List saved successfully.")
+print(len(ordered_genres2))
+print("List saved successfully.")

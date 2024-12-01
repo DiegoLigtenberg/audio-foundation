@@ -88,11 +88,12 @@ if __name__ == "__main__":
     print(f"Total number of trainable parameters: {total_params}")
 
     decoder_layer = model.decoder.layers[0]  # Get the first layer of the decoder
-    # print(decoder_layer)
-    # print(f"Query weight size: {decoder_layer.multihead_attn.in_proj_weight.size()}")
-    # print(f"Key weight size: {decoder_layer.multihead_attn.in_proj_weight.size()}")
-    # print(f"Value weight size: {decoder_layer.multihead_attn.in_proj_weight.size()}")
+    print(decoder_layer)
+    print(f"Query weight size: {decoder_layer.multihead_attn.in_proj_weight.size()}")
+    print(f"Key weight size: {decoder_layer.multihead_attn.in_proj_weight.size()}")
+    print(f"Value weight size: {decoder_layer.multihead_attn.in_proj_weight.size()}")
 
+    asd
     # import sys
     # sys.exit()
 

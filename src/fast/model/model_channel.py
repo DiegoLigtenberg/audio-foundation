@@ -19,76 +19,83 @@ class DummyDataset(Dataset):
         spectrogram = torch.rand(self.seq_len, self.input_size)
         target = torch.rand(1, self.input_size)
         return spectrogram, target
-    
-    
+  
+# Positional Encoding
 class PositionalEncoding(nn.Module):
-    def __init__(self, d_model, max_len=512):
+    def __init__(self, freq_size, seq_len=512):
         super(PositionalEncoding, self).__init__()
-        pe = torch.zeros(max_len, d_model)
-        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-torch.log(torch.tensor(10000.0)) / d_model))
+        pe = torch.zeros(seq_len, freq_size)
+        position = torch.arange(0, seq_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, freq_size, 2).float() * (-torch.log(torch.tensor(10000.0)) / freq_size))
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
         pe = pe.unsqueeze(0)
-        self.register_buffer('pe', pe)
+        self.register_buffer('pe', pe) # positional encoding is not a learnable parameter
 
     def forward(self, x):
         return x + self.pe[:, :x.size(1)]
+    
+class CausalMask(nn.Module):
+    def __init__(self, seq_len):
+        super(CausalMask, self).__init__()
+        # Precompute the causal mask for the maximum sequence length
+        mask = torch.triu(torch.ones(seq_len, seq_len), diagonal=1).bool()
+        self.register_buffer('mask', mask)  # Not a learnable parameter
+
+    def forward(self, seq_len):
+        # Return the causal mask sliced to the desired sequence length
+        return self.mask[:seq_len, :seq_len]
+
 
 class TransformerModel(nn.Module):
-    def __init__(self, freq_size, num_channels, seq_len, num_heads, num_decoder_layers, dim_feedforward):
+    def __init__(self, freq_size, num_channels, seq_len, num_heads, num_encoder_layers, dim_feedforward):
         super(TransformerModel, self).__init__()
 
         # Define freq based on num_channels
         freq_size = freq_size * num_channels
-
         
         # Positional Encoding
-        self.positional_encoding = PositionalEncoding(freq_size, max_len=seq_len)
+        self.positional_encoding = PositionalEncoding(freq_size, seq_len=seq_len)
         
-        # Channel Attention
-        self.channel_attention = nn.MultiheadAttention(
-            embed_dim=freq_size,  # Each channel has the same embedding size
-            num_heads=num_heads,
-            batch_first=True
-        )
-        
-        # Transformer Decoder
-        decoder_layer = nn.TransformerDecoderLayer(
+       # Transformer Encoder
+        encoder_layer = nn.TransformerEncoderLayer(
             d_model=freq_size,
             nhead=num_heads,
             dim_feedforward=dim_feedforward,
             batch_first=True
         )
-        self.decoder = nn.TransformerDecoder(decoder_layer, num_layers=num_decoder_layers)
-        
+        self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_encoder_layers)
+
+        # Causal Mask
+        self.causal_mask = CausalMask(seq_len)
+
         # Output Projection
         self.fc_out = nn.Linear(freq_size, freq_size)
 
-
-    def forward(self, x, tgt):
+    def forward(self, x):
         # x has shape [batch, channel, frequency, time]
         batch_size, num_channels, frequency, time = x.size()
-    
-        # Reshape [B x C x F x T] -> [B, T, C*F] for input sequence
-        x = x.permute(0, 3, 1, 2).reshape(batch_size, time, num_channels * frequency)  
-        # Apply positional encoding to input (x) only
-        x = self.positional_encoding(x)  # Apply positional encoding to time (seq_len = time)
-        
-        # Now the target (tgt) needs to be reshaped as well (since it's the target sequence)
-        tgt = tgt.permute(0, 3, 1, 2).reshape(batch_size, 1, num_channels * frequency)  # Reshape tgt
-        
-        # Apply transformer decoder (predicting a single token)
-        out = self.decoder(tgt, x)  # [batch, seq_len=1, input_size]
-        
+
+        # Reshape [B, C, F, T] -> [B, T, C*F]
+        x = x.permute(0, 3, 1, 2).reshape(batch_size, time, num_channels * frequency)
+
+        # Apply positional encoding
+        x = self.positional_encoding(x)  # Shape remains [B, T, C*F]
+
+        # Generate the causal mask for the current sequence length
+        causal_mask = self.causal_mask(seq_len=time)  # Shape [time, time]
+
+        # Pass through Transformer encoder
+        encoded = self.encoder(x, mask=causal_mask)  # Shape [B, T, C*F]
+
         # Output projection
-        out = self.fc_out(out)
-        # Check if the output is 3-dimensional (as expected: [B, 1, C*F])
+        out = self.fc_out(encoded)  # Shape [B, T, C*F]
 
-        # Reshape the output back to [batch, channels, frequency, time]
-        out = out.reshape(batch_size, num_channels, frequency, 1)  # Reshape to desired output shape
+        out = torch.sigmoid(out)  # Shape [B, T, C*F]
+
+        # Reshape back to [B, C, F, T]
+        out = out.reshape(batch_size, time, num_channels, frequency).permute(0, 2, 3, 1) # B, C, F, T
         return out
-
 
 
 if __name__ == "__main__":
@@ -99,7 +106,7 @@ if __name__ == "__main__":
     num_samples = 1000
     batch_slice_size = 8          #gpt3 ->4096
     num_heads = 32           #gpt3 -> 96
-    num_decoder_layers = 16  #gpt3 -> 96
+    num_encoder_layers = 16  #gpt3 -> 96
     dim_feedforward = 8192   #gpt3 -> 48768
     learning_rate = 1e-4
     num_epochs = 2
@@ -113,7 +120,7 @@ if __name__ == "__main__":
     dataloader = DataLoader(dataset, batch_size=batch_slice_size, shuffle=True)
 
     # Model, Loss, and Optimizer
-    model = TransformerModel(freq_size, seq_len, num_heads, num_decoder_layers, dim_feedforward).to(device)
+    model = TransformerModel(freq_size, seq_len, num_heads, num_encoder_layers, dim_feedforward).to(device)
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -130,7 +137,6 @@ if __name__ == "__main__":
     # import sys
     # sys.exit()
 
-
     # Training Loop with timing
     start_training = time.time()  # Start timing the entire training process
 
@@ -141,17 +147,17 @@ if __name__ == "__main__":
         
         with tqdm(dataloader, unit="batch") as tepoch:
             tepoch.set_description(f"Epoch {epoch+1}/{num_epochs}")
-            for spectrogram, target in tepoch:
+            for input_tensor_batch, target_tensor_batch in tepoch:
                 # Move data to GPU
-                spectrogram = spectrogram.to(device)
-                target = target.to(device)
+                input_tensor_batch = input_tensor_batch.to(device)
+                target_tensor_batch = target_tensor_batch.to(device)
                 optimizer.zero_grad()
-                target = torch.zeros_like(target).to(device)  # Initialize the target input with zeros
-                output = model(spectrogram, target)
+                target_tensor_batch = torch.zeros_like(target_tensor_batch).to(device)  # Initialize the target input with zeros
+                output = model(input_tensor_batch, target_tensor_batch)
                 
-                print(spectrogram.shape,target.shape,output.shape)
+                print(input_tensor_batch.shape,target_tensor_batch.shape,output.shape)
                 asd
-                loss = criterion(output[:, -1, :], target.squeeze(1))
+                loss = criterion(output[:, -1, :], target_tensor_batch.squeeze(1))
                 loss.backward()
                 optimizer.step()
                 total_loss += loss.item()

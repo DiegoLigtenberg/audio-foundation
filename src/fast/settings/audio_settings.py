@@ -5,8 +5,8 @@ from itertools import islice
 N_FFT = 2046  # FFT size
 HOP_LENGTH = 861  # Overlap size
 SAMPLE_RATE = 44100  # Desired sample rate
-CHUNK_DURATION = 20  # Duration in seconds to process
-MONO = False
+CHUNK_DURATION = 10  # Duration in seconds to process
+MONO = True
 
 # SPECTROGRAM_SAVE_DIR = "train_spectrogram"
 # MIN_MAX_VALUES_SAVE_DIR = "F:/Thesis/test"

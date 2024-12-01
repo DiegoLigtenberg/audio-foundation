@@ -53,7 +53,7 @@ ydl_opts = {
     'postprocessors': [{
         'key': 'FFmpegExtractAudio',
         'preferredcodec': 'mp3',
-        # 'preferredquality': '192',
+        # 'preferredquality': '192', # 
     }],
     'postprocessor_args': [
         '-ar', '44100',
