@@ -1,3 +1,4 @@
+# thisi s depricated see blow line of comments (line 22)
 from setuptools import setup, find_packages
 setup(
     name="fast", 
@@ -17,3 +18,7 @@ setup(
 # can uninstall this with:   pip uninstall mss_project
 
 #TODO add ffmpeg as requirement
+
+# this is depricated, we now need to use pyproject.toml
+# pip install -e . --use-pep517 # in the pyproject.tml file we specify the package name 'fast'
+# pip uninstall fast

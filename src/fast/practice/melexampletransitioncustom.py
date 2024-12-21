@@ -89,7 +89,7 @@ reconstructed_waveform_filtered = griffin_lim(filtered_spectrogram_resized)
 reconstructed_waveform_filtered = reconstructed_waveform_filtered.squeeze(0)  # Remove batch dimension (now shape: [time])
 
 
-torchaudio.save("reconstructed_waveform_high_quality.wav", reconstructed_waveform_filtered.unsqueeze(0), SAMPLE_RATE)
+# torchaudio.save("reconstructed_waveform_high_quality.wav", reconstructed_waveform_filtered.unsqueeze(0), SAMPLE_RATE)
 # Plot the original and filtered spectrograms for comparison
 plt.figure(figsize=(10, 5))
 plt.subplot(1, 2, 1)

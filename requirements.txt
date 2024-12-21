@@ -6,9 +6,12 @@ scikit_learn==1.5.2
 scipy==1.14.1
 selenium==4.26.1
 setuptools==75.1.0
-torch==2.5.1
-torchaudio==2.5.1
+torch==2.5.1 # this shoudl be extracted from pip install torchvision torchaudio from pytorch download
+torchaudio==2.5.1 # this shoudl be extracted from pip install torchvision torchaudio from pytorch download
 tqdm==4.67.0
 webdriver_manager==4.0.2
 yt_dlp==2024.11.18
-# pip install soundfile
+pip install soundfile
+# cuda = 11.8 -> pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+                #  pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+                                   

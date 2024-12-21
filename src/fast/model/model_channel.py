@@ -21,6 +21,7 @@ class DummyDataset(Dataset):
         return spectrogram, target
   
 # Positional Encoding
+'''
 class PositionalEncoding(nn.Module):
     def __init__(self, freq_size, seq_len=512):
         super(PositionalEncoding, self).__init__()
@@ -30,10 +31,22 @@ class PositionalEncoding(nn.Module):
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
         pe = pe.unsqueeze(0)
+        self.alpha = nn.Parameter(torch.ones(1))  # Learnable scale
         self.register_buffer('pe', pe) # positional encoding is not a learnable parameter
 
     def forward(self, x):
-        return x + self.pe[:, :x.size(1)]
+        return x + self.pe[:, :x.size(1)] # x + self.alpha * self.pe[:, :x.size(1)]
+        '''
+
+class PositionalEncoding(nn.Module):
+    def __init__(self, freq_size, seq_len=512):
+        super(PositionalEncoding, self).__init__()
+        # Learnable positional encoding
+        self.positional_embedding = nn.Parameter(torch.randn(1, seq_len, freq_size))
+
+    def forward(self, x):
+        # Add the learned positional embedding
+        return x + self.positional_embedding[:, :x.size(1)]
     
 class CausalMask(nn.Module):
     def __init__(self, seq_len):
@@ -86,15 +99,16 @@ class TransformerModel(nn.Module):
         causal_mask = self.causal_mask(seq_len=time)  # Shape [time, time]
 
         # Pass through Transformer encoder
-        encoded = self.encoder(x, mask=causal_mask)  # Shape [B, T, C*F]
-
+        # encoded = self.encoder(x, mask=causal_mask)  # Shape [B, T, C*F]
+        encoded = self.encoder(x)
         # Output projection
         out = self.fc_out(encoded)  # Shape [B, T, C*F]
+        out = out[:,-1:,:] # pick last prediction of time series
 
         out = torch.sigmoid(out)  # Shape [B, T, C*F]
 
         # Reshape back to [B, C, F, T]
-        out = out.reshape(batch_size, time, num_channels, frequency).permute(0, 2, 3, 1) # B, C, F, T
+        out = out.reshape(batch_size, 1, num_channels, frequency).permute(0, 2, 3, 1) # B, C, F, T
         return out
 
 

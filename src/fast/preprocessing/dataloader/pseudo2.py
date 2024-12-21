@@ -10,7 +10,7 @@ from torchaudio.transforms import GriffinLim
 import random
 import json
 
-torch.manual_seed(42)  # make grififnlim deterministic # TODO this should run in some global file
+# torch.manual_seed(42)  # make grififnlim deterministic # TODO this should run in some global file
 
 class AudioDataset(Dataset):
     def __init__(self, dir_audio: list, extensions=('.mp3',), transforms=None):

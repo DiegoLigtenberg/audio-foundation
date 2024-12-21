@@ -13,7 +13,7 @@ class TimeLoop:
 
     def time_iteration(self):
         elapsed_time = time.time() - self.start_time
-        print(f"Iteration took {elapsed_time:.4f} seconds")
+        print(f"Iteration took {elapsed_time:.4f} seconds",end="\r")
         self.start_time = time.time()  # Reset for the next iteration
 
 class TimeBlock:
@@ -29,7 +29,7 @@ class TimeBlock:
 
     def time_block(self):
         elapsed_time = time.time() - self.start_time
-        print(f"Iteration took {elapsed_time:.4f} seconds")
+        print(f"Iteration took {elapsed_time:.4f} seconds",end="\r")
         self.start_time = time.time()  # Reset for the next iteration
 
 

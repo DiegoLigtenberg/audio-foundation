@@ -1,6 +1,7 @@
 from fast.model.model_channel import *
 from fast.preprocessing.dataloader.dataloader import *
 from fast.settings.directory_settings import *
+from fast.model.model_cnn import *
 from matplotlib.pylab import plt
 
 class GeneratorDataset():
@@ -12,11 +13,11 @@ class GeneratorDataset():
         self.device = device
         
         # Initialize the model with the same architecture
-        self.model = TransformerModel(freq_size, num_channels, seq_len, num_heads, num_decoder_layers, dim_feedforward).to(self.device)
-        # Load the state dictionary into the model
-        self.model.load_state_dict(torch.load(model_save_path,weights_only=True))
-        # Set the model to evaluation mode (important for inference)
-        self.model.eval()
+        # self.model = TransformerModel(freq_size, num_channels, seq_len, num_heads, num_decoder_layers, dim_feedforward).to(self.device)
+        # # Load the state dictionary into the model
+        # self.model.load_state_dict(torch.load(model_save_path,weights_only=True))
+        # # Set the model to evaluation mode (important for inference)
+        # self.model.eval()
 
     def initialize_data_dict(self):
         """Helper method to initialize the data dictionary."""
@@ -57,7 +58,7 @@ class GeneratorDataset():
 
 
 class AutoregressiveSpectrogramGenerator:
-    def __init__(self, model, input_key="log_power_spectrogram_slices", output_key="reconstructed_log_power_spectrogram_song", padding_value=0.0, n_slices=5, max_steps=500, device=None):
+    def __init__(self, model, input_key="log_power_spectrogram_slices", output_key="reconstructed_log_power_spectrogram_song", padding_value=0.0, n_slices=5, max_steps=1000, device=None):
         self.model = model  # The trained model for generating the next token
         self.input_key = input_key
         self.output_key = output_key
@@ -67,23 +68,42 @@ class AutoregressiveSpectrogramGenerator:
 
     def __call__(self, data_dict):
         nr_model_tokens = 512
-        current_sequence = torch.load("src/fast/model/model_weights/spectrogram_input.pth", weights_only=True)[None, :, :, :nr_model_tokens].to(device)
-
+        current_sequence = torch.load("src/fast/model/model_weights/spectrogram_input2.pth", weights_only=True)[None, :, :, :nr_model_tokens].to(device)
+        current_sequence = current_sequence[:,:,:current_sequence.shape[2]//2,:]
+        # print(current_sequence.shape)
+        # asd
+        # current_sequence[:,:,:,0:50] = 0 # see how a swap in 50 tokens changes complete output (adverserial attack).
         full_sequence = torch.zeros(*current_sequence.shape[:3], nr_model_tokens + self.max_steps).to(device)
         full_sequence[:, :, :, :nr_model_tokens] = current_sequence
+
         for step in range(self.max_steps):
             current_sequence = full_sequence[:, :, :, step : nr_model_tokens + step]
             with torch.no_grad():  # No need to compute gradients for inference
                 output = self.model(current_sequence)
-                if step%50 == 0:
-                    plt.figure(figsize=(10, 4))
-                    plt.imshow(output[0,0,:,:].cpu().numpy(), aspect='auto', origin='lower', cmap='inferno')
-                    plt.colorbar(label='Log Power')
-                    plt.xlabel('Time Frames')
-                    plt.ylabel('Frequency Bins')
-                    plt.title('Dynamic Range Compressed Power Spectrogram')
-                    plt.tight_layout()
-                    plt.show()
+                if step> 50:# == 0:
+                    pass
+                    # output = output + 0.1 * torch.randn_like(output)
+                    # plt.figure(figsize=(10, 4))
+                    # plt.imshow(output[0,0,:,:].cpu().numpy(), aspect='auto', origin='lower', cmap='inferno')
+                    # print(output[0,0,:,:].shape)
+                    # print(current_sequence[0,0,-2,:].unsqueeze(1).shape)
+                    # asd
+                    # plt.imshow(output[0,0,:,:].cpu().numpy(), aspect='auto', origin='lower', cmap='inferno')
+                    # plt.colorbar(label='Log Power')
+                    # plt.xlabel('Time Frames')
+                    # plt.ylabel('Frequency Bins')
+                    # plt.title('Dynamic Range Compressed Power Spectrogram')
+                    # plt.tight_layout()
+                    # plt.show()
+                   
+                    
+                    # plt.imshow(current_sequence[0,0,-1,:].unsqueeze(1).cpu().numpy(), aspect='auto', origin='lower', cmap='inferno')
+                    # plt.colorbar(label='Log Power')
+                    # plt.xlabel('Time Frames')   
+                    # plt.ylabel('Frequency Bins')
+                    # plt.title('Dynamic Range Compressed Power Spectrogram')
+                    # plt.tight_layout()
+                    # plt.show()
 
             full_sequence[:, :, :, nr_model_tokens + step] = output[:, :, :, -1]
 
@@ -96,17 +116,21 @@ class AutoregressiveSpectrogramGenerator:
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    seq_len = 1024  # Time steps # potentially make this 512
+    seq_len = 512  # Time steps # potentially make this 512
     freq_size = 1024  # Frequency bins
-    num_heads = 32//8           # gpt3 -> 96
-    num_decoder_layers = 16//8  # gpt3 -> 96
-    dim_feedforward = 8192//8   # gpt3 -> 48768
+    num_heads = 32//4           #gpt3 -> 96
+    num_encoder_layers = 16//4  #gpt3 -> 96
+    dim_feedforward = 8192*2   #gpt3 -> 48768
     num_channels = 1 if MONO else 2
-    model_save_path = r"src/fast/model/model_weights/model.pth"
+    model_save_path = r"src/fast/model/model_weights/model_1target_augment.pth"
 
     # Initialize the generator model here
-    gen_model = TransformerModel(freq_size, num_channels, seq_len, num_heads, num_decoder_layers, dim_feedforward).to(device)
-    gen_model.load_state_dict(torch.load(model_save_path, weights_only=True))
+    # gen_model = TransformerModel(freq_size//2, num_channels, seq_len, num_heads, num_encoder_layers, dim_feedforward).to(device)
+    # gen_model.load_state_dict(torch.load(model_save_path, weights_only=True))
+    # gen_model.eval()
+
+    gen_model = Autoencoder(input_channels=1, num_filters=64).to(device)
+    gen_model.load_state_dict(torch.load(model_save_path,weights_only=True))
     gen_model.eval()
 
     # inp = torch.zeros(1, num_channels, freq_size, seq_len).to(device)
@@ -122,7 +146,7 @@ if __name__ == "__main__":
     ]
 
     # Instantiate the dataset
-    gen_dataset = GeneratorDataset(model_save_path, freq_size, num_channels, seq_len, num_heads, num_decoder_layers, dim_feedforward, device, transforms)
+    gen_dataset = GeneratorDataset(model_save_path, freq_size//2, num_channels, seq_len, num_heads, num_encoder_layers, dim_feedforward, device, transforms)
 
     # Accessing the dataset with an index
     idx = 0  # Example index
@@ -130,14 +154,20 @@ if __name__ == "__main__":
 
     # extrat normalized model output
     normalized_spectrogram = (data_dict["target"]["metadata"]["log_power_spectrogram"])
+    # print(normalized_spectrogram.shape)
+    # asd
+    zeros_after = torch.zeros((1, 1, normalized_spectrogram.shape[2], normalized_spectrogram.shape[3])).to(device)
 
+    normalized_spectrogram = torch.cat((normalized_spectrogram, zeros_after), dim=2)
+    # asd
     # denormalize
     with open("src/fast/preprocessing/dataloader/lists_and_saved_files/min_max_values_log_power_spectrogram.json", 'r') as f:
         data = json.load(f)
     global_min,global_max = data["min_max"]
     log_power_spectrogram = normalized_spectrogram * (global_max - global_min) + global_min
 
-
+    # print(log_power_spectrogram.shape)
+    # asd
     griffin_lim = GriffinLim(n_fft=N_FFT, hop_length=HOP_LENGTH, power=1)
     # Reconstruct the waveform from the log power spectrogram
     power_spectrogram = torch.pow(10, log_power_spectrogram / 20)  # Reverse the log operation

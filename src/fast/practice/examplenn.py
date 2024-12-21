@@ -12,7 +12,7 @@ N_FFT = 2046*2  # FFT size
 HOP_LENGTH = 1050  # Overlap size
 SAMPLE_RATE = 22050*2  # Desired sample rate
 CHUNK_DURATION = 30  # Duration in seconds to process
-
+'''
 # Path to the audio file
 audio_file_path = "audio_files/Jo Blankenburg - Meraki Extended.mp3"  # Replace with the actual path
 
@@ -42,56 +42,79 @@ griffin_lim = GriffinLim(n_fft=N_FFT, hop_length=HOP_LENGTH, power=1)
 input_spectrogram = magnitude_spectrogram.unsqueeze(0)  # Add batch dimension
 output_waveform = griffin_lim(magnitude_spectrogram).unsqueeze(0)  # Add batch dimension for output (waveform after Griffin-Lim)
 
+
+'''
 # Define tanh function
 def tanh(x: torch.Tensor) -> torch.Tensor:
     output = (torch.exp(x) - torch.exp(-x)) / (torch.exp(x) + torch.exp(-x))
     return (output - output.min()) / (output.max() - output.min())
 
-# Function to create perceptual weights
+
 def create_perceptual_weights_pytorch(nr_steps, min_frequency, max_frequency, bass_cutoff=150, 
                                       min_bass_weight=0.6, max_bass_weight=1.0, min_weight=0.2, 
-                                      x_max=200):
-    # Generate frequency values
+                                      x_max=200, frequency_0=20, frequency_1=4000, shift_tanh=-3.5):
+    # Generate frequency values (scaled to nr_steps)
     f = torch.linspace(min_frequency, max_frequency, nr_steps)
 
     # Calculate switch indices based on frequencies
-    switch_idx_0 = int(frequency_0 / (max_frequency - min_frequency) * nr_steps) - 1
-    switch_idx_1 = int(frequency_1 / (max_frequency - min_frequency) * nr_steps) - 1
+    switch_idx_0 = int((bass_cutoff - min_frequency) / (max_frequency - min_frequency) * nr_steps)
+    switch_idx_1 = int((frequency_1 - min_frequency) / (max_frequency - min_frequency) * nr_steps)
+
+    # Ensure that switch_idx_0 and switch_idx_1 are within valid bounds
+    switch_idx_0 = max(1, switch_idx_0)  # Ensure it's at least 1
+    switch_idx_1 = max(switch_idx_0 + 1, switch_idx_1)  # Ensure it's greater than switch_idx_0
 
     # Create weight for the first part (bass region)
-    weights_0 = tanh(torch.linspace(0.0, 3.0, switch_idx_0))
-    weights_0 = weights_0 * (1.0 - min_bass_weight) + min_bass_weight
+    if switch_idx_0 > 1:  # Avoid empty tensor
+        weights_0 = tanh(torch.linspace(0.0, 3.0, switch_idx_0))
+        weights_0 = weights_0 * (1.0 - min_bass_weight) + min_bass_weight
+    else:
+        weights_0 = torch.zeros(switch_idx_0)  # In case of invalid range, use zeros
 
     # Constant weight between bass_cutoff and frequency_1
     weights_1 = torch.ones(switch_idx_1 - switch_idx_0)
 
     # Create weight for the third part (high frequency region)
     weights_2 = tanh(torch.linspace(3.0, shift_tanh, nr_steps - switch_idx_1))
-    weights_2 = weights_2 * (1.0 - high_min_weight) + high_min_weight
+    weights_2 = weights_2 * (1.0 - max_bass_weight) + min_weight
 
     # Concatenate all weight parts
-    weights = torch.concat([weights_0, weights_1, weights_2])
+    weights = torch.cat([weights_0, weights_1, weights_2])
 
     # Compute Mel scale for the frequencies
     mel = torch.log(f / 700 + 1)  # Logarithmic Mel scale formula
 
-    return weights # f , m , weights for plotting
+    return f,  weights  # Return frequencies, Mel scale, and perceptual weights for plotting
+
 
 # Parameters
-nr_steps = 2047 # 2024 or 2048
+nr_steps = 512 # 2024 or 2048
 min_frequency = 20         # min freq thath should be predicted
 max_frequency = 10000    #max frequency that should be predicted
 high_min_weight = 0.6 # 0.1 (to change for base lvl)
 low_min_weight = 0.6 #0.6 or 0.9 (.9 for good bass)
 frequency_0 = 20 # 200
-frequency_1 = 4000 # 2000
+frequency_1 = 6000 # 2000
 shift_tanh = -3.5 # 4.5 lower is earlier cutoff 
 
 # Get the perceptual weights and Mel scale
-weights = create_perceptual_weights_pytorch(
+frequencies, weights = create_perceptual_weights_pytorch(
     nr_steps, min_frequency, max_frequency, bass_cutoff=150, min_bass_weight=0.0, 
     max_bass_weight=1.0, min_weight=0.2, x_max=200
 )
+print(weights.shape)
+
+# Plot the perceptual weights with frequency
+plt.figure(figsize=(8, 6))
+plt.plot(frequencies.numpy(), weights.numpy(), label="Perceptual Weights", color='r')
+plt.xlabel("Frequency (Hz)")
+plt.ylabel("Weight")
+plt.title("Perceptual Weights vs Frequency")
+# plt.xscale("log")
+plt.grid(True)
+plt.show()
+asd
+
 print(type(weights.shape[0]))
 # weights[:int(0.25*weights.shape[0]):] =0
 print(weights.shape)

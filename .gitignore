@@ -171,6 +171,9 @@ mp3_files/
 # Ignore all .wav files
 *.wav
 
+# Ignore all .pth files
+*.pth
+
 
 # -----------------------------
 

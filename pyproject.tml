@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fast"
+version = "1.0"
+description = "Foundational Audio Spectrogram Transformer-based model"
+authors = [
+    { name = "Diego Ligtenberg", email = "diegoligtenberg@gmail.com" }
+]
+license = { text = "MIT" }
+readme = "README"
+dependencies = []
