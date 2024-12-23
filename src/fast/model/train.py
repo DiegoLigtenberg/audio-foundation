@@ -31,7 +31,7 @@ if __name__ == "__main__":
     num_samples = 1000
     # was 128 128, think bout lowering to 64 32, rethink what epoch means!
     batch_song_size = 64
-    batch_slice_size = 32      #gpt3 ->4096
+    batch_slice_size = 32       #gpt3 ->4096      # 21 is seeing every part of song once on avg -> 3;30 song has 10752 time steps, 512 steps per chunk = 21 slices
     num_heads = 32//8           #gpt3 -> 96
     num_encoder_layers = 16//8  #gpt3 -> 96
     dim_feedforward = 8192//4   #gpt3 -> 48768

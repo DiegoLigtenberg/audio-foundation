@@ -416,9 +416,8 @@ class LogPowerSpectrogramSliceExtractor:
         """
         
         if self.n_slice_param == None:
-            max_possible_slices = int(song_duration_sec // self.slice_duration_sec)
-            # Scale slices and ensure at least one slice is returned
-            return max_possible_slices
+            dynamic_song_to_balanced_slice_amt = int(song_duration_sec // self.slice_duration_sec)
+            return dynamic_song_to_balanced_slice_amt
         else:
             return self.n_slice_param
 

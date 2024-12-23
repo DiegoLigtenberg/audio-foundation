@@ -68,7 +68,7 @@ class AutoregressiveSpectrogramGenerator:
 
     def __call__(self, data_dict):
         nr_model_tokens = 512
-        current_sequence = torch.load("src/fast/model/model_weights/spectrogram_input2.pth", weights_only=True)[None, :, :, :nr_model_tokens].to(device)
+        current_sequence = torch.load("src/fast/model/model_weights/spectrogram_input.pth", weights_only=True)[None, :, :, :nr_model_tokens].to(device)
         current_sequence = current_sequence[:,:,:current_sequence.shape[2]//2,:]
         # print(current_sequence.shape)
         # asd
